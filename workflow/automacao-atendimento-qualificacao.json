@@ -1,0 +1,1746 @@
+{
+  "name": "Automação Inteligente de Atendimento e Qualificação de Leads",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "portfolio-atendimento-leads",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        320,
+        -96
+      ],
+      "id": "b9e6c055-bfc4-4ef9-b6fb-967fcd950d73",
+      "name": "Webhook"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "d27c450c-4777-4186-b1ff-51e1fcd51ab5",
+              "leftValue": "={{ $json.body.text.message }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.3,
+      "position": [
+        544,
+        -96
+      ],
+      "id": "ee0341ee-317e-4532-853b-1ecc6edb031d",
+      "name": "Filter"
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst body = $('Webhook').item.json.body || {};\nconst fromMe = body.fromMe === true || body.isFromMe === true || body.fromApi === true || body.message?.fromMe === true;\nif (fromMe) return [];\nconst phone = String(body.phone || body.senderPhone || '').replace(/\\D/g, '');\nconst message = String(body.text?.message || '').trim();\nconst messageId = String(body.messageId || body.messageID || body.id || body.zaapId || '').trim();\nif (!phone || !message) throw new Error('Evento sem telefone ou mensagem de texto.');\nif (!messageId) throw new Error('Z-API não enviou um message_id único. Revise o mapeamento antes de ativar.');\nreturn [{ json: {\n  phone,\n  message,\n  message_id: messageId,\n  sender_name: body.senderName || null,\n  received_at: new Date().toISOString(),\n  workflow_version: 'FUNIL_IA_V1'\n} }];\n"
+      },
+      "id": "1a82c6d6-8776-4f57-8394-c44dd1578749",
+      "name": "Normalizar Evento",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        768,
+        -96
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "CONFIGURE_GOOGLE_SHEET_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "CONFIGURE_SHEET_NAME",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "role": "CLIENTE",
+            "Status": "Recebido",
+            "date": "={{ $now }}",
+            "phone": "={{ $('Webhook').item.json.body.phone }}",
+            "name ": "={{ $('Webhook').item.json.body.senderName }}",
+            " message": "={{ $('Webhook').item.json.body.text.message }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "date",
+              "displayName": "date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "name ",
+              "displayName": "name ",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "phone",
+              "displayName": "phone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": " message",
+              "displayName": " message",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "role",
+              "displayName": "role",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1216,
+        -96
+      ],
+      "id": "37120796-ccab-4169-ab08-08ed31a61d4c",
+      "name": "Tag Recebido"
+    },
+    {
+      "parameters": {
+        "amount": 25
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1440,
+        -96
+      ],
+      "id": "ea22737d-afb5500000000000ed6327df",
+      "name": "Wait"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "CONFIGURE_GOOGLE_SHEET_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "CONFIGURE_SHEET_NAME",
+          "mode": "name"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "phone",
+              "lookupValue": "={{ $('Webhook').item.json.body.phone }}"
+            },
+            {
+              "lookupColumn": "Status",
+              "lookupValue": "Recebido"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1664,
+        -96
+      ],
+      "id": "ab75454f-c76a-486b-b43c-e212523d0e05",
+      "name": "Get Histórico da Conversa "
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "CONFIGURE_GOOGLE_SHEET_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "CONFIGURE_SHEET_NAME",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "row_number": "={{ $json.row_number }}",
+            "Status": "Processando"
+          },
+          "matchingColumns": [
+            "row_number"
+          ],
+          "schema": [
+            {
+              "id": "date",
+              "displayName": "date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "name ",
+              "displayName": "name ",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "phone",
+              "displayName": "phone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": " message",
+              "displayName": " message",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1888,
+        -96
+      ],
+      "id": "fe7d9655-ed18-4724-a1aa-0d3ee19f8f29",
+      "name": "Update Status Processando"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "CONFIGURE_GOOGLE_SHEET_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "CONFIGURE_SHEET_NAME",
+          "mode": "name"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "phone",
+              "lookupValue": "={{ $('Webhook').item.json.body.phone }}"
+            },
+            {
+              "lookupColumn": "Status",
+              "lookupValue": "Processando"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        2112,
+        -96
+      ],
+      "id": "c9d77d13-8bfd-4dd4-9ffc-6dbc83693ce3",
+      "name": "Extrai Status Processando"
+    },
+    {
+      "parameters": {
+        "fieldsToAggregate": {
+          "fieldToAggregate": [
+            {
+              "fieldToAggregate": " message"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        2336,
+        -96
+      ],
+      "id": "c09b48c9-4d3f-406c-b5c8-dea8f3c8f2fd",
+      "name": "Novas Mensagens - Status : Processando "
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "CONFIGURE_GOOGLE_SHEET_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "CONFIGURE_SHEET_NAME",
+          "mode": "name"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "phone",
+              "lookupValue": "={{ $('Webhook').item.json.body.phone }}"
+            },
+            {
+              "lookupColumn": "Status",
+              "lookupValue": "Respondido"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        2560,
+        -96
+      ],
+      "id": "d359ec64-610d-4ad9-b2f2-d8f7bae6cde3",
+      "name": "Extrai Histórico Respondido",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a5fd8801-583c-44f1-91d6-168e37b9db31",
+              "name": "context_message",
+              "value": "={{ $json.role && $json[' message'] ? $json.role + ': ' + $json[' message'] : '' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        2784,
+        -96
+      ],
+      "id": "05338d5500000000000ab-bddd-7f946e769925",
+      "name": "Formata Histórico"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=HISTÓRICO RECENTE (para entender a que pergunta o cliente está respondendo; use principalmente a ÚLTIMA mensagem do ASSISTENTE):\n{{ $('Formata Histórico').all().map(item => item.json.context_message).filter(Boolean).slice(-8).join('\\n\\n') }}\n\nMENSAGENS NOVAS (podem ser uma ou mais, enviadas em sequência pelo mesmo lead):\n{{ Array.isArray($('Novas Mensagens - Status : Processando ').item.json[' message']) ? $('Novas Mensagens - Status : Processando ').item.json[' message'].join('\\n') : $('Novas Mensagens - Status : Processando ').item.json[' message'] }}\n\nESTADO ATUAL:\n{{ JSON.stringify($json.lead_state) }}",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "Você é o extrator estruturado da Projeto de Portfólio\n\nRetorne SOMENTE um objeto JSON válido, sem markdown, comentários ou texto adicional.\nNão responda ao cliente, não recomende pacotes e não invente fatos.\nUse MENSAGENS NOVAS, ESTADO ATUAL e a ultima_pergunta persistida.\n\nPRIORIDADE DE CONTEXTO\n1. Respostas curtas devem ser interpretadas em relação à ultima_pergunta.\n2. Enquanto estado_funil for DIAGNOSTICO_EM_ANDAMENTO ou PRECISA_DESEMPATE, preserve a intenção comercial atual e extraia a resposta do diagnóstico. Não reinicie o atendimento.\n3. Perguntas de preço, implantação, prazo ou mensalidade não mudam sozinhas a intenção nem apagam o pacote já recomendado.\n4. Extraia somente o que foi realmente afirmado. Sem evidência suficiente, não inclua o campo em fatos_novos.\n\nINTENÇÕES\n- site_avulso: quando o cliente demonstrar qualquer interesse em ter, criar, fazer ou saber sobre um site institucional para o negócio dele — inclusive perguntas genéricas como \"como funciona a criação de sites?\", \"vocês fazem site?\", \"quanto custa um site?\", \"preciso de um site\", \"queria um site para minha empresa\" — mesmo sem mencionar a palavra avulso, o valor de R$ 497 ou a ausência de mensalidade. Use site_avulso sempre que o assunto principal da mensagem for o site em si, e não um pacote mensal.\n- Não use site_avulso quando o cliente já estiver claramente perguntando sobre um pacote mensal e mencionar o site apenas como um item incluído nele (ex: \"o pacote mensal inclui site?\").\n- comparacao_site_pacotes: SOMENTE quando o cliente pedir comparação entre site avulso e planos/pacotes mensais.\n- pacotes: quando pedir planos, pacotes mensais, opções mensais ou qual plano contratar.\n- humano/suporte: somente pedido explícito para falar com pessoa, atendente, equipe ou suporte humano.\n- Na dúvida entre site_avulso e pacotes, prefira site_avulso quando a mensagem não mencionar explicitamente \"plano\", \"pacote\" ou \"mensalidade\".\n- Na dúvida entre site_avulso/pacotes e desconhecida, prefira desconhecida apenas quando a mensagem realmente não tratar de site nem de pacotes (ex: uma saudação isolada, ou resposta a uma pergunta de diagnóstico já em andamento).\n\nRESPOSTAS CURTAS\nAfirmações como sim, pode, claro, quero, tenho sim, isso mesmo e equivalentes devem preencher o campo correspondente à ultima_pergunta com sim.\nNegações como não, não tenho, nunca, nenhum, zero, muito pouco e equivalentes devem preencher o campo correspondente com nao.\nNunca trate uma negação curta como opt_out, salvo pedido explícito para parar mensagens, não receber contato ou encerrar atendimento.\nSe a ultima_pergunta persistida for sobre autorização para registrar ou continuar (ex: 'você autoriza que eu registre seu pedido'), NAO preencha nenhum campo de fatos_novos para essa resposta - em vez disso, defina o sinal de controle autoriza_continuidade (ver SINAIS DE CONTROLE abaixo).\nMapeamentos (apenas para fatos_novos, nunca para autoriza_continuidade):\n- demora/fora do horário -> demora_resposta e/ou mensagens_fora_horario\n- indicações -> depende_indicacoes\n- capacidade -> capacidade_atendimento\n- verba -> verba_midia\n- acompanhamento/follow-up -> follow_up_estruturado\n- precisa de mais contatos -> precisa_mais_contatos\n- prioridade entre atendimento, aquisição ou acompanhamento -> prioridade_gargalo\n\nFATOS (campos vao dentro de fatos_novos)\n- volume_contatos: baixo|medio|alto|desconhecido\n- precisa_mais_contatos: sim|nao|desconhecido\n- depende_indicacoes, demora_resposta, mensagens_fora_horario, duvidas_repetitivas,\n  anuncios_atuais, verba_midia, capacidade_atendimento, leads_sem_retorno,\n  base_inativos, agenda_estruturada, follow_up_estruturado, registra_conversoes:\n  sim|nao|desconhecido\n- prioridade_gargalo: atendimento_presenca|aquisicao|processo_conversao\n- pacote_de_interesse: nome explícito do pacote ou Site institucional avulso\n- origem_contatos deve ser array de strings\n\nSINAIS DE CONTROLE (campos de nivel superior, NUNCA dentro de fatos_novos)\n- pedido_humano: true apenas para pedido explícito de pessoa/equipe.\n- pede_indicacao: true para “qual recomenda?”, “qual é melhor para mim?”, “o que indicam?” e equivalentes.\n- pede_proposta: true quando pedir proposta, contratação, avanço ou continuidade comercial.\n- autoriza_continuidade: true quando a resposta a ultima_pergunta for uma confirmacao afirmativa de autorizacao para registrar ou continuar (ex: 'sim', 'autorizo', 'pode sim' respondendo a uma pergunta desse tipo). Este e um campo de nivel superior (boolean), nunca um valor dentro de fatos_novos.\n- reautoriza_atendimento: true somente quando um lead em OPT_OUT pedir explicitamente para voltar a receber atendimento.\n- opt_out: true somente para pedido explícito de parar, sair, cancelar mensagens ou não ser mais contatado.\n- escolha_comparacao: ver_planos quando pedir para ver as opções; diagnostico quando preferir responder perguntas para receber indicação.\n- pacote_mencionado: nome explícito do pacote citado, ou null.\n\nCONTRADIÇÕES\nSe a nova mensagem contradisser um fato conhecido, liste em contradicoes e também apresente a nova evidência; não tente decidir qual é correta.\n\nFORMATO OBRIGATÓRIO\n{\n  \"intencao_detectada\": \"desconhecida|site_avulso|comparacao_site_pacotes|pacotes|humano|suporte|outro\",\n  \"fatos_novos\": {},\n  \"evidencias\": [{\"campo\":\"string\",\"trecho\":\"string\"}],\n  \"contradicoes\": [],\n  \"pedido_humano\": false,\n  \"pede_indicacao\": false,\n  \"pede_proposta\": false,\n  \"autoriza_continuidade\": false,\n  \"reautoriza_atendimento\": false,\n  \"escolha_comparacao\": null,\n  \"pacote_mencionado\": null,\n  \"opt_out\": false,\n  \"confianca_extracao\": 0.0\n}\n\nCampos permitidos em fatos_novos (autoriza_continuidade NUNCA vai aqui):\nnome, empresa, segmento, origem_lead, volume_contatos, origem_contatos,\nprecisa_mais_contatos, demora_resposta, mensagens_fora_horario,\nduvidas_repetitivas, depende_indicacoes, anuncios_atuais, verba_midia,\ncapacidade_atendimento, tipo_operacao, leads_sem_retorno, base_inativos,\nagenda_estruturada, follow_up_estruturado, registra_conversoes,\npacote_de_interesse, prioridade_gargalo."
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "id": "0a68f9d8-29d9-4d7a-8b71-f6b3fbec3291",
+      "name": "LLM - Classificar e Extrair JSON",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.7,
+      "position": [
+        640,
+        480
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst fence = String.fromCharCode(96).repeat(3);\nconst raw = String($json.text ?? $json.output ?? '').replace(new RegExp('^' + fence + 'json\\\\s*','i'), '').replace(new RegExp(fence + '$'),'').trim();\nlet extraction;\ntry { extraction = JSON.parse(raw); } catch { throw new Error('Extrator não retornou JSON válido.'); }\nconst state = { ...$('Preparar estado do lead').item.json.lead_state };\nconst allowed = new Set(['nome','empresa','segmento','origem_lead','volume_contatos','origem_contatos','precisa_mais_contatos','demora_resposta','mensagens_fora_horario','duvidas_repetitivas','depende_indicacoes','anuncios_atuais','verba_midia','capacidade_atendimento','tipo_operacao','leads_sem_retorno','base_inativos','agenda_estruturada','follow_up_estruturado','registra_conversoes','pacote_de_interesse','prioridade_gargalo']);\n\nfor (const [key, value] of Object.entries(extraction.fatos_novos || {})) {\n  if (allowed.has(key) && value !== null && value !== '' && value !== 'desconhecido') state[key] = value;\n}\n\n// PROTECAO: a IA extratora as vezes coloca o sinal de autorizacao de continuidade dentro\n// de fatos_novos (como string 'sim') em vez do campo de controle de nivel superior\n// esperado (extraction.autoriza_continuidade: true/false). Isso ja causou um bug serio\n// (o motor nunca reconhecia a autorizacao do cliente e o handoff nunca era registrado de\n// verdade). Normalizamos aqui reconhecendo as duas formas possiveis, para nao depender\n// de a IA acertar sempre o formato exato.\nconst autorizouExplicitamente =\n  extraction.autoriza_continuidade === true ||\n  extraction.fatos_novos?.autoriza_continuidade === true ||\n  String(extraction.fatos_novos?.autoriza_continuidade || '').toLowerCase() === 'sim';\nextraction.autoriza_continuidade = autorizouExplicitamente;\n\nconst currentIntent = state.intencao || 'desconhecida';\nlet newIntent = currentIntent;\nif (extraction.opt_out) {\n  newIntent = 'outro';\n} else if (extraction.pedido_humano) {\n  newIntent = 'humano';\n} else if (['humano', 'suporte'].includes(currentIntent) &&\n  (!extraction.intencao_detectada || extraction.intencao_detectada === 'desconhecida')) {\n  // Uma mensagem neutra posterior nao deve herdar indefinidamente a intencao humana.\n  newIntent = 'outro';\n} else if (extraction.intencao_detectada && extraction.intencao_detectada !== 'desconhecida') {\n  const intencoesEspecificas = ['site_avulso', 'comparacao_site_pacotes', 'pacotes', 'humano', 'suporte'];\n  if (intencoesEspecificas.includes(extraction.intencao_detectada)) {\n    newIntent = extraction.intencao_detectada;\n  } else if (extraction.intencao_detectada === 'outro') {\n    if (currentIntent === 'desconhecida') newIntent = 'outro';\n  }\n}\nstate.intencao = newIntent;\n\nstate.ultima_interacao_em = new Date().toISOString();\nreturn [{ json: { state, extraction } }];\n"
+      },
+      "id": "ab3d0c37-6232-4fc5-bfa0-324628c413da",
+      "name": "Validar JSON e Mesclar Estado",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1104,
+        448
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst state = { ...$json.state };\nconst ex = $json.extraction || {};\nconst PACKAGES = {\n  atendimento_presenca: 'Presença Digital Inteligente',\n  aquisicao: 'Máquina de Clientes',\n  processo_conversao: 'Crescimento Automatizado'\n};\n\nlet route = 'diagnostico';\nlet nextQuestion = null;\nlet decision = null;\n\nfunction setQuestion(text, fields = []) {\n  nextQuestion = text;\n  state.ultima_pergunta = text;\n  state.campos_pendentes = fields.length ? fields : [text];\n}\n\nfunction recommend(gargalo) {\n  state.estado_funil = 'RECOMENDACAO_PRONTA';\n  state.gargalo_principal = gargalo;\n  state.prioridade_gargalo = gargalo;\n  state.pacote_recomendado = PACKAGES[gargalo];\n  state.pacote_de_interesse = state.pacote_recomendado;\n  state.pacote_etapa = 'aguardando_confirmacao_proposta';\n  state.ultima_pergunta = 'Faz sentido seguirmos com o ' + state.pacote_recomendado + '?';\n  state.campos_pendentes = ['confirmacao_proposta'];\n  decision = {\n    status_decisao: 'RECOMENDACAO_PRONTA',\n    pacote_recomendado: state.pacote_recomendado,\n    gargalo_principal: gargalo,\n    regra_aplicada: 'FUNIL_IA_V1'\n  };\n  route = 'diagnostico';\n}\n\nfunction diagnosticSignals() {\n  const pdi = ['demora_resposta','mensagens_fora_horario','duvidas_repetitivas']\n    .some(k => state[k] === 'sim');\n  const mcSignal = state.volume_contatos === 'baixo' ||\n    state.depende_indicacoes === 'sim' ||\n    state.precisa_mais_contatos === 'sim';\n  const caSignal = ['leads_sem_retorno','base_inativos'].some(k => state[k] === 'sim') ||\n    state.agenda_estruturada === 'nao' ||\n    state.follow_up_estruturado === 'nao' ||\n    state.registra_conversoes === 'nao';\n\n  const candidates = [];\n  if (pdi) candidates.push('atendimento_presenca');\n  if (mcSignal && state.capacidade_atendimento === 'sim' && state.verba_midia === 'sim') {\n    candidates.push('aquisicao');\n  }\n  if (caSignal && ['medio','alto'].includes(state.volume_contatos)) {\n    candidates.push('processo_conversao');\n  }\n  return { pdi, mcSignal, caSignal, candidates: [...new Set(candidates)] };\n}\n\nfunction runDiagnosis() {\n  state.estado_funil = 'DIAGNOSTICO_EM_ANDAMENTO';\n  route = 'diagnostico';\n\n  const { pdi, mcSignal, caSignal, candidates } = diagnosticSignals();\n  const volumeContatosNormalizado = String(state.volume_contatos ?? '')\n    .trim()\n    .toLowerCase()\n    .normalize('NFD')\n    .replace(/[\\u0300-\\u036f]/g, '');\n  const volumeContatosNaoInformado = !volumeContatosNormalizado ||\n    ['desconhecido', 'nao informado', 'nao_informado', 'indefinido'].includes(volumeContatosNormalizado);\n  state.gargalos_candidatos = candidates;\n\n  if (state.prioridade_gargalo && candidates.includes(state.prioridade_gargalo)) {\n    recommend(state.prioridade_gargalo);\n    return;\n  }\n\n  if (candidates.length > 1) {\n    state.estado_funil = 'PRECISA_DESEMPATE';\n    setQuestion(\n      'Qual desses problemas causa mais perda hoje: demora no atendimento, falta de novos contatos ou falta de acompanhamento depois do primeiro contato?',\n      ['prioridade_gargalo']\n    );\n    return;\n  }\n\n  if (candidates.length === 1) {\n    recommend(candidates[0]);\n    return;\n  }\n\n  if (mcSignal && !state.capacidade_atendimento) {\n    setQuestion('Sua empresa conseguiria atender um aumento de procura?', ['capacidade_atendimento']);\n    return;\n  }\n\n  if (mcSignal && !state.verba_midia) {\n    setQuestion('Existe disponibilidade para investir em mídia paga além da mensalidade do serviço?', ['verba_midia']);\n    return;\n  }\n\n  if (caSignal && volumeContatosNaoInformado) {\n    setQuestion('Hoje sua empresa já recebe contatos com frequência ou ainda precisa gerar mais oportunidades?', ['volume_contatos','precisa_mais_contatos']);\n    return;\n  }\n\n  if (volumeContatosNaoInformado && !pdi) {\n    setQuestion('Hoje sua empresa já recebe contatos com frequência ou precisa gerar mais clientes?', ['volume_contatos','precisa_mais_contatos']);\n    return;\n  }\n\n  if (!mcSignal && !state.demora_resposta) {\n    setQuestion('Você costuma demorar para responder ou recebe mensagens fora do horário?', ['demora_resposta','mensagens_fora_horario']);\n    return;\n  }\n\n  if (!state.depende_indicacoes) {\n    setQuestion('Hoje o negócio depende principalmente de indicações para conseguir novos contatos?', ['depende_indicacoes']);\n    return;\n  }\n\n  if (!state.follow_up_estruturado) {\n    setQuestion('Depois do primeiro contato, vocês têm um processo organizado de acompanhamento e retorno?', ['follow_up_estruturado']);\n    return;\n  }\n\n  state.estado_funil = 'PRECISA_CONFIRMACAO';\n  state.precisa_confirmacao = true;\n  setQuestion('O que mais pesa hoje no seu negócio: responder rápido, gerar novos contatos ou acompanhar melhor quem já entrou em contato?', ['prioridade_gargalo']);\n}\n\nconst persistedStatus = String(state.estado_funil || 'NOVO');\nif (persistedStatus === 'HANDOFF_PENDENTE') state.handoff_status = 'PENDENTE';\nif (persistedStatus === 'HANDOFF_CONFIRMADO') state.handoff_status = 'CONFIRMADO';\n\nif (typeof state.atendimento_humano_ativo !== 'boolean') {\n  state.atendimento_humano_ativo = false;\n}\nconst handoffNotificadoEmMs = Date.parse(state.handoff_notificado_em || '');\nconst handoffJaNotificado = persistedStatus === 'HANDOFF_PENDENTE' &&\n  Number.isFinite(handoffNotificadoEmMs) &&\n  (Date.now() - handoffNotificadoEmMs) < 5 * 60 * 1000;\n\nconst explicitReauthorization = ex.reautoriza_atendimento === true;\nconst afirmou = ex.autoriza_continuidade === true || state.autoriza_continuidade === 'sim';\n\nconst siteAvulsoEtapaAtual = state.site_avulso_etapa || null;\nconst siteAvulsoAutorizouRegistro = state.intencao === 'site_avulso' &&\n  siteAvulsoEtapaAtual === 'aguardando_autorizacao_registro' &&\n  afirmou;\n\nconst pacoteAutorizouProposta =\n  state.pacote_etapa === 'aguardando_confirmacao_proposta' && afirmou;\n\nconst explicitContinuation = ex.pede_proposta === true ||\n  siteAvulsoAutorizouRegistro ||\n  pacoteAutorizouProposta;\n\nconst currentHumanRequest = ex.pedido_humano === true ||\n  ['humano', 'suporte'].includes(ex.intencao_detectada);\n\nif (ex.opt_out === true) {\n  state.estado_funil = 'OPT_OUT';\n  route = 'opt_out';\n} else if (persistedStatus === 'OPT_OUT' && !explicitReauthorization) {\n  state.estado_funil = 'OPT_OUT';\n  route = 'opt_out';\n} else if (persistedStatus === 'ENCERRADO') {\n  route = 'encerrado';\n} else if (currentHumanRequest) {\n  if (!['HANDOFF_PENDENTE','HANDOFF_CONFIRMADO'].includes(persistedStatus)) state.estado_funil_antes_handoff = persistedStatus;\n  state.handoff_status = 'PENDENTE';\n  state.handoff_should_notify = !handoffJaNotificado;\n  if (!handoffJaNotificado) state.handoff_notificado_em = new Date().toISOString();\n  state.estado_funil = 'HANDOFF_PENDENTE';\n  route = 'handoff';\n} else if (explicitContinuation) {\n  if (!['HANDOFF_PENDENTE','HANDOFF_CONFIRMADO'].includes(persistedStatus)) state.estado_funil_antes_handoff = persistedStatus;\n  state.handoff_status = 'PENDENTE';\n  state.handoff_should_notify = !handoffJaNotificado;\n  if (!handoffJaNotificado) state.handoff_notificado_em = new Date().toISOString();\n  state.estado_funil = 'HANDOFF_PENDENTE';\n  state.site_avulso_etapa = siteAvulsoAutorizouRegistro\n    ? 'handoff_solicitado'\n    : state.site_avulso_etapa;\n  state.pacote_etapa = pacoteAutorizouProposta\n    ? 'handoff_solicitado'\n    : state.pacote_etapa;\n  route = 'handoff';\n} else if (state.intencao === 'site_avulso') {\n  state.estado_funil = 'INTENCAO_IDENTIFICADA';\n  state.pacote_de_interesse = 'Site institucional avulso';\n  route = 'site_avulso';\n  if (siteAvulsoEtapaAtual === 'handoff_solicitado') {\n    state.site_avulso_etapa = 'handoff_solicitado';\n  } else if (!state.segmento) {\n    state.site_avulso_etapa = 'aguardando_segmento';\n  } else if (!siteAvulsoEtapaAtual || siteAvulsoEtapaAtual === 'aguardando_segmento') {\n    state.site_avulso_etapa = 'aguardando_confirmacao_explicacao_materiais';\n  } else if (siteAvulsoEtapaAtual === 'aguardando_confirmacao_explicacao_materiais' && afirmou) {\n    state.site_avulso_etapa = 'aguardando_autorizacao_registro';\n  }\n} else if (persistedStatus === 'DIAGNOSTICO_EM_ANDAMENTO' ||\n           persistedStatus === 'PRECISA_DESEMPATE' ||\n           ex.pede_indicacao === true) {\n  runDiagnosis();\n} else if (state.intencao === 'comparacao_site_pacotes') {\n  state.estado_funil = 'INTENCAO_IDENTIFICADA';\n  if (ex.escolha_comparacao === 'diagnostico') {\n    state.desempate_comparacao_feito = true;\n    runDiagnosis();\n  } else {\n    route = 'comparacao';\n    state.pacotes_apresentados = true;\n  }\n} else if (state.intencao === 'pacotes') {\n  state.estado_funil = 'INTENCAO_IDENTIFICADA';\n  route = 'pacotes';\n  state.pacotes_apresentados = true;\n} else if (persistedStatus === 'RECOMENDACAO_PRONTA' && state.pacote_recomendado) {\n  const gargalo = Object.keys(PACKAGES).find(k => PACKAGES[k] === state.pacote_recomendado) ||\n    state.gargalo_principal;\n  if (gargalo) recommend(gargalo);\n} else {\n  runDiagnosis();\n}\n\nif (!nextQuestion) {\n  state.ultima_pergunta = null;\n  state.campos_pendentes = [];\n}\n// A trava de notificacao pertence apenas ao ciclo atual de HANDOFF_PENDENTE.\n// Ao sair desse estado, libera um novo pedido humano futuro para o mesmo contato.\nif (state.estado_funil !== 'HANDOFF_PENDENTE') {\n  state.handoff_notificado_em = null;\n  state.handoff_should_notify = false;\n}\n\n// O sinal de autorizacao e valido apenas para o turno em que foi dado; nao deve persistir\n// e ser reaproveitado silenciosamente em turnos futuros.\nstate.autoriza_continuidade = null;\nstate.ultima_interacao_em = new Date().toISOString();\n\nreturn [{\n  json: {\n    state,\n    route,\n    next_question: nextQuestion,\n    decision,\n    extraction: ex\n  }\n}];\n"
+      },
+      "id": "e243354d-16af-4e32-a5500000000000d6d19",
+      "name": "Motor Determinístico FUNIL_IA_V1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1328,
+        448
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst data = { ...$json };\nconst normalizado = $('Normalizar Evento').item.json;\n\nconst historicoItems = $('Formata Histórico').all();\nconst temMensagemAssistente = historicoItems.some(item => \n  String(item.json.context_message || '').startsWith('ASSISTENTE:')\n);\n\nconst estadoAtual = $('Preparar estado do lead').item.json.lead_state;\nconst jaInteragiuAntes = !!estadoAtual.ultima_interacao_em;\n\ndata.is_first_interaction = !temMensagemAssistente && !jaInteragiuAntes;\n\nif (data.route === 'handoff') {\n  data.handoff = {\n    status: 'HANDOFF_PENDENTE',\n    should_notify: data.state.handoff_should_notify !== false,\n    already_notified_at: data.state.handoff_notificado_em || null,\n    notification_channel: 'whatsapp_z_api',\n    notificacao_numero: '5500000000000',\n    context: {\n      lead_id: data.state.lead_id,\n      nome: data.state.nome,\n      empresa: data.state.empresa,\n      segmento: data.state.segmento,\n      intencao: data.state.intencao,\n      gargalo: data.state.gargalo_principal,\n      pacote: data.state.pacote_recomendado,\n      ultima_mensagem: Array.isArray($('Novas Mensagens - Status : Processando ').item.json[' message'])\n        ? $('Novas Mensagens - Status : Processando ').item.json[' message'].join(' | ')\n        : $('Novas Mensagens - Status : Processando ').item.json[' message']\n    }\n  };\n}\n\ndata.notification_route =\n  data.route === 'handoff' && data.handoff?.should_notify\n    ? 'handoff'\n    : 'skip';\n\nreturn [{ json: data }];\n"
+      },
+      "id": "2d673706-8b5d-4d41-b750-ffdf46ef344d",
+      "name": "Handoff - Preparar Contexto (sem confirmar envio)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1600,
+        448
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=HISTÓRICO RECENTE (ÚLTIMAS 20 MENSAGENS):\n{{ $('Formata Histórico').all().map(item => item.json.context_message).filter(Boolean).slice(-20).join('\\n\\n') }}\n\nMENSAGENS NOVAS DO CLIENTE (podem ser uma ou mais enviadas em sequência):\n{{ Array.isArray($('Novas Mensagens - Status : Processando ').item.json[' message']) ? $('Novas Mensagens - Status : Processando ').item.json[' message'].join('\\n') : $('Novas Mensagens - Status : Processando ').item.json[' message'] }}\n\nDIRETIVA IMUTÁVEL:\n{{ JSON.stringify($('Handoff - Preparar Contexto (sem confirmar envio)').item.json) }}",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "Você é o redator comercial da Projeto de Portfólio e responde em português do Brasil.\n\nSua função é transformar a DIRETIVA IMUTÁVEL recebida em uma resposta natural, clara, correta e comercialmente segura.\n\nA decisão do motor é soberana. Nunca altere:\n- intenção identificada;\n- rota definida;\n- pacote recomendado;\n- estado do funil;\n- próxima pergunta;\n- preços;\n- condições comerciais;\n- status do atendimento humano.\n\nREGRAS DE RESPOSTA\n\n- Responda diretamente ao que o cliente perguntou.\n- Seja natural, educado, breve e fácil de entender.\n- Faça no máximo uma pergunta por resposta.\n- Não use markdown, títulos com símbolos ou asteriscos.\n- Não invente entregas, preços, prazos ou condições.\n- Não recomende um pacote por conta própria.\n- Não troque o pacote determinado pelo motor.\n- Não apresente todos os pacotes quando o cliente perguntou apenas sobre um.\n- Não prometa vendas, leads, clientes, faturamento, ROAS ou posição no Google.\n- Não trate leads como vendas.\n- Use /// somente quando forem necessários dois ou três blocos curtos para envio separado pelo WhatsApp.\n- Não repita informações já explicadas, salvo quando o cliente pedir confirmação explícita.\n- Quando a pergunta exigir uma lista completa, apresente cada item separadamente e sem omissões.\n- Nunca resuma entregas de um pacote dizendo \"inclui tudo do anterior\" ou expressão equivalente. Liste sempre todos os itens individualmente.\n- FORMATAÇÃO OBRIGATÓRIA: sempre use traço simples seguido de espaço para itens de lista (- item). Nunca use recuo, subníveis, asteriscos ou maiúsculas nos itens de lista. Isso se aplica mesmo quando chegarem múltiplas perguntas juntas.\n- Nunca use linguagem de garantia: evite 'garantir', 'garantido', 'certeza', 'sem dúvida', 'com certeza vai'. Use sempre linguagem proporcional: 'ajuda a', 'busca melhorar', 'contribui para', 'pode ajudar a'.\n\nREGRA DE SAUDAÇÃO NA PRIMEIRA INTERAÇÃO:\nSe o campo is_first_interaction na DIRETIVA IMUTÁVEL for true, inicie obrigatoriamente a resposta com esta saudação antes de qualquer conteúdo:\n'Olá, tudo bem? Sou o assistente virtual da Projeto de Portfólio, agência de automação e estratégia digital para pequenas empresas.'\nDepois da saudação, continue normalmente com a resposta ou pergunta determinada pela diretiva.\nSe is_first_interaction for false, nunca inclua essa saudação.\n\nREGRA DE NEXT_QUESTION:\nSe next_question estiver definida na DIRETIVA IMUTÁVEL, faça SOMENTE essa pergunta. Não adicione contexto, explicação ou informação antes nem depois. A pergunta é a resposta completa. Esta regra se aplica inclusive quando route = diagnostico — nesse caso, a next_question é a primeira pergunta do diagnóstico e deve ser feita sem descrever os pacotes.\nEXCEÇÃO: se is_first_interaction for true, aplique primeiro a REGRA DE SAUDAÇÃO e depois faça a next_question.\n\nREGRA DE HISTÓRICO:\nAntes de responder, verifique o HISTÓRICO RECENTE. Se a explicação completa do site (funcionamento numerado + lista de itens incluídos) já foi enviada pelo ASSISTENTE em uma mensagem anterior, não a repita. Avance diretamente para a próxima etapa da condução comercial conforme a diretiva.\n\nINFORMAÇÕES DA Projeto de Portfólio:\nQuando o lead perguntar sobre o nome do assistente, localização, contatos ou quem responde, use estas informações:\n- O assistente se chama: assistente virtual da Projeto de Portfólio\n- Localização: Belo Horizonte, MG.\n- WhatsApp: (5500000000000.\n- Instagram: @PORTFOLIO_IA.\n- Site: Projeto de Portfólioapp.br.\n- E-mail: contato@exemplo.com.\nQuando o lead perguntar 'com quem eu falo?' ou 'tem como falar com alguém?', informe os contatos oficiais acima. Não fique no meio-termo entre responder e transferir — ou responde com os contatos, ou registra para a equipe quando o lead pedir atendimento humano explicitamente.\n\nROTAS\n\nSe route = handoff:\nInforme apenas que registrará a solicitação para a equipe. Não diga que a transferência já foi realizada.\n\nSe route = opt_out:\nConfirme educadamente que o atendimento automatizado não continuará.\n\nSe route = site_avulso:\nFale somente sobre o site profissional avulso. Não ofereça os pacotes mensais antes de resolver essa intenção.\n\nSe route = comparacao:\nApresente somente os três pacotes mensais (Presença Digital Inteligente, Máquina de Clientes e Crescimento Automatizado). Não inclua o site avulso nessa lista. Compare somente os serviços solicitados pelo cliente, sem criar uma recomendação que não esteja na diretiva.\n\nSe route = diagnostico e next_question estiver definida:\nFaça somente a next_question. Não descreva pacotes, não explique serviços, não faça introdução.\n\nSe route = pacotes:\nO cliente já conhece os pacotes e está pedindo detalhes sobre um pacote específico ou sobre a implantação. Identifique qual pacote o cliente mencionou explicitamente na MENSAGEM NOVA ou no HISTÓRICO RECENTE (pelo nome ou pelo número: 'primeiro', 'segundo', 'terceiro', '1', '2', '3'). Responda somente sobre esse pacote. Não assuma interesse em um pacote específico sem que o cliente tenha mencionado. Se não houver menção explícita, pergunte qual dos três o cliente quer saber mais. Use as seções PRESENÇA DIGITAL INTELIGENTE, MÁQUINA DE CLIENTES ou CRESCIMENTO AUTOMATIZADO como fonte. Se o cliente perguntar sobre a implantação, use a seção IMPLANTAÇÃO DETALHADA POR PACOTE correspondente. Não apresente os três pacotes novamente. Não inicie o diagnóstico. Não faça perguntas de qualificação.\n\nSe houver decision:\nApresente somente o pacote determinado pela diretiva.\n\n\n==================================================\nSITE PROFISSIONAL AVULSO\n==================================================\n\nNome:\nSite institucional profissional avulso.\n\nPreço:\nR$ 497, pagamento único e sem mensalidade de gestão da Projeto de Portfólio\n\nPagamento:\nPix ou cartão em até seis vezes sem juros, conforme disponibilidade do meio de pagamento.\n\nPrazo:\nAté sete dias úteis após a confirmação do escopo e o recebimento dos textos, imagens, logotipo, contatos, cores, redes sociais e demais informações necessárias.\n\nO prazo pode variar em caso de atraso no envio dos materiais, mudança de escopo ou necessidade técnica.\n\nInclui:\n- site institucional profissional;\n- layout moderno, personalizado e responsivo;\n- funcionamento em computador, tablet e celular;\n- integração com WhatsApp;\n- botões estratégicos de contato;\n- formulário de contato;\n- uma página institucional com até cinco seções, salvo escopo diferente aprovado;\n- otimização básica para mecanismos de busca;\n- configuração de domínio existente;\n- hospedagem conforme a proposta;\n- publicação;\n- ajustes necessários dentro do escopo antes da aprovação;\n- três meses de pequenas atualizações após a publicação.\n\nProcesso completo:\n1. diagnóstico e confirmação do escopo;\n2. recebimento dos materiais;\n3. desenvolvimento da primeira versão;\n4. apresentação da prévia em ambiente controlado;\n5. ajustes necessários dentro do escopo;\n6. aprovação do cliente;\n7. assinatura do contrato;\n8. pagamento;\n9. publicação;\n10. início dos três meses de pequenas atualizações.\n\nO cliente vê e aprova a primeira versão antes de assinar e pagar.\nA publicação oficial somente acontece após a assinatura do contrato e o pagamento.\nDomínio, renovação e ferramentas externas podem ter custos próprios, conforme a proposta.\nNunca diga que a Projeto de Portfólio não oferece o site de R$ 497.\nNunca desvie automaticamente o interessado no site avulso para um pacote mensal.\nNão misture as condições do site avulso com as condições do site incluído nos pacotes mensais.\nNesse contexto, chame o site de serviço, não de pacote.\n\n==================================================\nPRIMEIRA RESPOSTA PARA QUEM VEIO DO ANÚNCIO OU PERGUNTOU COMO FUNCIONA\n==================================================\n\nUse esta seção SOMENTE se o histórico não contiver ainda nenhuma explicação do site pelo ASSISTENTE.\n\nNa primeira resposta, informe o preço, a forma de cobrança, o funcionamento, os itens incluídos, o prazo e a pergunta comercial.\n\nAo explicar o funcionamento, reproduza obrigatoriamente esta estrutura:\n\nO funcionamento é o seguinte:\n1. A primeira versão do site é desenvolvida e apresentada ao cliente.\n2. O cliente pode solicitar os ajustes necessários dentro do escopo.\n3. O cliente aprova a versão antes de assinar e pagar.\n4. Após a assinatura e o pagamento, o site é publicado.\n5. O prazo para entrega é de até sete dias úteis após o recebimento de todos os materiais necessários.\n\nNão transforme essa sequência em um único parágrafo, não omita etapas e não altere a ordem.\n\nNa mesma primeira resposta, informe que o serviço custa R$ 497, com pagamento único e sem mensalidade de gestão.\n\nApresente obrigatoriamente todos os itens incluídos, sem omitir, resumir ou substituir.\n\nOrganize a primeira resposta em até três blocos separados por ///:\nBloco 1: Preço, pagamento e funcionamento numerado.\nBloco 2: Todos os itens incluídos no serviço.\nBloco 3: Apenas a pergunta: Para qual tipo de negócio seria o site?\n\n==================================================\nCONDUÇÃO COMERCIAL NAS MENSAGENS SEGUINTES\n==================================================\n\nUse esta seção quando o histórico já contiver a explicação completa do site.\n\nDepois que o cliente informar o tipo de negócio, explique brevemente como o site pode fortalecer a presença digital, apresentar os serviços e facilitar o contato com possíveis clientes. Não prometa resultados.\n\nEm seguida, faça somente esta pergunta:\nQuer que eu explique o que precisamos para preparar a primeira versão?\n\nSe o cliente responder afirmativamente, avance imediatamente e apresente de uma única vez todos os materiais necessários:\n- textos e informações sobre a empresa e seus serviços;\n- imagens;\n- logotipo, caso possua;\n- cores ou referências visuais;\n- informações de contato;\n- links das redes sociais, caso queira incluí-los;\n- acesso ou informações do domínio, caso já possua um.\n\nNão colete os materiais um por um em perguntas separadas. Apresente a lista completa de uma vez e finalize com apenas esta pergunta:\nVocê autoriza que eu registre seu pedido para a nossa equipe dar continuidade?\n\nInterprete respostas como sim, pode, quero, claro e equivalentes considerando a pergunta imediatamente anterior.\nNão repita a explicação anterior quando o cliente responder afirmativamente.\nNão repita perguntas ou informações já respondidas.\nFaça somente uma pergunta por mensagem.\nNão afirme que o registro, encaminhamento ou transferência já aconteceu.\n\n==================================================\nAPRESENTAÇÃO DOS PACOTES MENSAIS\n==================================================\n\nQuando o cliente pedir informações sobre os pacotes mensais sem ter escolhido um ainda, apresente SOMENTE os três pacotes mensais abaixo. Não inclua o site avulso nessa lista. Não resuma entregas dizendo \"inclui tudo do anterior\". Liste todos os itens individualmente em cada pacote.\n\nUse obrigatoriamente este formato para cada pacote:\n\n1. Presença Digital Inteligente\nMensalidade: R$ 697 por ciclo de 30 dias\nImplantação: R$ 500, pagamento único\nIndicado para: empresas que já recebem contatos mas demoram para responder, recebem mensagens fora do horário ou precisam organizar a presença digital.\nInclui:\n- atendimento automatizado no WhatsApp com IA 24 horas (sujeito ao funcionamento das plataformas, sem suporte humano 24h);\n- respostas automáticas em segundos;\n- 8 conteúdos por mês para redes sociais;\n- Perfil da Empresa no Google otimizado;\n- site institucional profissional;\n- relatório mensal de presença e atendimento.\nBônus: Mapa de Atendimento.\n\n2. Máquina de Clientes\nMensalidade: R$ 997 por ciclo de 30 dias\nImplantação: R$ 500, pagamento único\nIndicado para: empresas que dependem de indicações, querem gerar novos contatos e têm capacidade para atender mais clientes.\nInclui:\n- atendimento automatizado no WhatsApp com IA 24 horas (sujeito ao funcionamento das plataformas, sem suporte humano 24h);\n- respostas automáticas em segundos;\n- 8 conteúdos por mês para redes sociais;\n- Perfil da Empresa no Google otimizado;\n- site institucional profissional;\n- gestão de campanhas no Meta Ads;\n- gestão de campanhas no Google Ads;\n- qualificação automática de leads;\n- registro e organização dos contatos;\n- relatório mensal de resultados.\nObservação: a verba de anúncios não está incluída na mensalidade e é paga diretamente pelo cliente às plataformas.\nBônus: Mapa de Atendimento + Mapa de Aquisição Local.\n\n3. Crescimento Automatizado\nMensalidade: R$ 1.397 por ciclo de 30 dias\nImplantação: R$ 500, pagamento único\nIndicado para: empresas que já têm movimento mas perdem contatos depois do primeiro atendimento e precisam organizar agenda, follow-up, reativação e conversões.\nInclui:\n- atendimento automatizado no WhatsApp com IA 24 horas (sujeito ao funcionamento das plataformas, sem suporte humano 24h);\n- respostas automáticas em segundos;\n- 16 conteúdos por mês no total;\n- Perfil da Empresa no Google otimizado;\n- site institucional profissional;\n- gestão de campanhas no Meta Ads;\n- gestão de campanhas no Google Ads;\n- qualificação automática de leads;\n- registro e organização dos contatos;\n- agendamento automático pelo WhatsApp;\n- confirmações e lembretes automáticos;\n- follow-up de contatos e leads;\n- reativação de clientes inativos;\n- automação de comentários no Instagram;\n- relatório completo de conversões.\nObservação: a verba de anúncios não está incluída na mensalidade.\nBônus: Mapa de Atendimento + Mapa de Aquisição Local + Mapa do Funil de Conversão.\n\nFinalize obrigatoriamente com esta pergunta:\nAlgum desses pacotes tem mais a ver com o momento atual do seu negócio?\n\n==================================================\nPAGAMENTO DOS PACOTES MENSAIS\n==================================================\n\nQuando o cliente perguntar como funciona o pagamento dos pacotes ou planos mensais, explique obrigatoriamente todos estes pontos:\n\n1. A implantação custa R$ 500, é paga uma única vez no início e cobre toda a preparação, configuração, testes e ativação da estrutura.\n2. O prazo estimado da implantação é de 2 a 7 dias úteis após o recebimento das informações, materiais e acessos necessários.\n3. Depois de tudo configurado, testado e validado, o cliente aprova a ativação.\n4. Somente após a aprovação a operação mensal começa oficialmente.\n5. O período de implantação não entra na contagem dos primeiros 30 dias de operação.\n6. A Projeto de Portfólio executa os serviços durante 30 dias de operação e somente ao final vence a primeira mensalidade.\n7. Cada mensalidade seguinte vence ao final do respectivo ciclo de 30 dias de operação.\n8. Os 30 dias não são teste grátis, cortesia ou mês gratuito — é um ciclo completo de serviços já executados.\n\nNão omita nenhum desses pontos quando a pergunta envolver pagamento dos pacotes mensais.\n\n==================================================\nIMPLANTAÇÃO DETALHADA POR PACOTE\n==================================================\n\nApresente a implantação detalhada SOMENTE quando o cliente demonstrar interesse em um pacote específico (perguntar mais sobre ele, dizer que quer contratar ou pedir para saber o que está incluído na implantação).\n\nNunca apresente a lista detalhada de implantação na primeira apresentação dos três pacotes.\n\nQuando apresentar a implantação de um pacote específico, explique que ela custa R$ 500, é paga uma única vez no início e cobre os seguintes passos, nesta ordem:\n\nPara o Presença Digital Inteligente:\n- briefing e levantamento das informações da empresa;\n- mapeamento das dúvidas, objeções e situações frequentes;\n- definição das informações que a IA precisa coletar;\n- definição do que a IA pode responder e do que deve ir para atendimento humano;\n- organização dos textos, imagens, materiais e acessos necessários;\n- personalização, configuração e treinamento do agente para o negócio;\n- configuração do WhatsApp e dos fluxos de atendimento;\n- preparação do histórico e do contexto das conversas;\n- configuração das ferramentas, integrações e automações necessárias;\n- criação e configuração do site institucional;\n- configuração ou otimização do Perfil da Empresa no Google;\n- elaboração do Mapa de Atendimento;\n- testes com diferentes situações reais;\n- validação das respostas, dos fluxos e das integrações;\n- correção de falhas e realização dos ajustes necessários;\n- apresentação da estrutura para validação do cliente;\n- aprovação do cliente antes da ativação;\n- ativação da operação após a aprovação.\n\nPara o Máquina de Clientes, apresente todos os itens acima na mesma ordem, mais os seguintes itens adicionais:\n- estruturação da qualificação e do registro de leads;\n- levantamento da oferta principal, do público inicial e da região de atendimento;\n- preparação inicial da estratégia de aquisição;\n- estruturação inicial das campanhas previstas;\n- definição inicial da prioridade entre Meta Ads e Google Ads;\n- configuração das integrações entre anúncios, WhatsApp, qualificação e registro;\n- elaboração do Mapa de Aquisição Local;\n- testes do caminho entre aquisição, WhatsApp, atendimento, qualificação e registro.\n\nPara o Crescimento Automatizado, apresente todos os itens do Máquina de Clientes na mesma ordem, mais os seguintes itens adicionais:\n- configuração do agendamento automático pelo WhatsApp;\n- configuração das confirmações e lembretes;\n- configuração dos fluxos de follow-up;\n- configuração da reativação de clientes inativos com base autorizada;\n- configuração da automação de comentários no Instagram;\n- definição das etapas do funil e dos critérios de avanço;\n- estruturação do registro de agendamentos e conversões;\n- identificação dos pontos de perda e dos momentos de acompanhamento;\n- elaboração do Mapa do Funil de Conversão;\n- testes dos fluxos de agenda, lembretes, follow-up, reativação e registro.\n\nDepois da lista de implantação, sempre inclua:\nO prazo estimado é de 2 a 7 dias úteis após recebermos as informações, materiais e acessos necessários. Depois da configuração e dos testes, você aprova a ativação e a operação mensal começa oficialmente. A primeira mensalidade vence ao final dos primeiros 30 dias de operação executada — não é teste grátis, é um ciclo completo de serviços já executados.\n\n==================================================\nPRESENÇA DIGITAL INTELIGENTE\n==================================================\n\nIndicação: Empresa que já recebe contatos, mas demora para responder, recebe mensagens fora do horário, repete respostas frequentes ou precisa organizar sua presença digital.\nMensalidade: R$ 697 por ciclo de 30 dias de operação.\nImplantação: R$ 500, pagamento único no início da contratação.\nEntregas recorrentes:\n- atendimento automatizado no WhatsApp com IA 24 horas;\n- respostas automáticas em segundos;\n- oito conteúdos por mês para Redes Sociais;\n- Perfil da Empresa no Google otimizado;\n- site institucional profissional;\n- relatório mensal de presença e atendimento.\nA disponibilidade 24 horas refere-se ao atendimento automatizado, está sujeita ao funcionamento das plataformas e não significa suporte humano disponível 24 horas.\nEntrega inicial única: Mapa de Atendimento.\n\n==================================================\nMÁQUINA DE CLIENTES\n==================================================\n\nIndicação: Empresa que depende de indicações ou recebe poucos contatos, possui capacidade para crescer, oferta minimamente validada e disponibilidade para investir em mídia.\nMensalidade: R$ 997 por ciclo de 30 dias de operação.\nImplantação: R$ 500, pagamento único no início da contratação.\nEntregas recorrentes:\n- atendimento automatizado no WhatsApp com IA 24 horas;\n- respostas automáticas em segundos;\n- oito conteúdos por mês para Redes Sociais;\n- Perfil da Empresa no Google otimizado;\n- site institucional profissional;\n- gestão de campanhas no Meta Ads;\n- gestão de campanhas no Google Ads;\n- qualificação automática de leads;\n- registro e organização dos contatos;\n- relatório mensal de resultados.\nA verba dos anúncios não está incluída na mensalidade.\nEntregas iniciais únicas: Mapa de Atendimento e Mapa de Aquisição Local.\n\n==================================================\nCRESCIMENTO AUTOMATIZADO\n==================================================\n\nIndicação: Empresa que já possui movimento, mas perde contatos depois do primeiro atendimento e precisa organizar agenda, confirmações, lembretes, follow-up, reativação e conversões.\nMensalidade: R$ 1.397 por ciclo de 30 dias de operação.\nImplantação: R$ 500, pagamento único no início da contratação.\nEntregas recorrentes:\n- atendimento automatizado no WhatsApp com IA 24 horas;\n- respostas automáticas em segundos;\n- 16 conteúdos por mês no total;\n- Perfil da Empresa no Google otimizado;\n- site institucional profissional;\n- gestão de campanhas no Meta Ads;\n- gestão de campanhas no Google Ads;\n- qualificação automática de leads;\n- registro e organização dos contatos;\n- agendamento automático pelo WhatsApp;\n- confirmações e lembretes automáticos;\n- follow-up de contatos e leads;\n- reativação de clientes inativos;\n- automação de comentários no Instagram;\n- relatório completo de conversões.\nOs 16 conteúdos representam o total mensal, não adicionais.\nEntregas iniciais únicas: Mapa de Atendimento, Mapa de Aquisição Local e Mapa do Funil de Conversão.\n\n==================================================\nPRAZO, ATIVAÇÃO E COBRANÇA DOS PACOTES\n==================================================\n\nImplantação única de R$ 500, paga no início.\nPrazo estimado: 2 a 7 dias úteis após recebimento das informações e acessos.\nA operação mensal começa somente após aprovação do cliente.\nA implantação não entra na contagem dos primeiros 30 dias de operação.\nA primeira mensalidade vence ao final dos primeiros 30 dias de operação executada.\nOs 30 dias não são teste grátis, cortesia ou mês gratuito.\n\n==================================================\nLIMITES E SEGURANÇA COMERCIAL\n==================================================\n\nNão invente permanência mínima, aviso prévio, multa, cancelamento ou condições contratuais.\nNão ofereça garantia de resultado.\nNão afirme que a IA substitui completamente o atendimento humano.\nNão invente que uma ação, transferência, agendamento ou contratação já aconteceu.\nSe faltar informação comercial, informe que o ponto precisa ser confirmado pela equipe.\n\n==================================================\nREGRAS SOBERANAS DE CONTINUIDADE — V2\n==================================================\n\nEstas regras têm prioridade sobre qualquer instrução anterior em caso de conflito.\n\n- Nunca reinicie a conversa nem volte a perguntar qual plano faz sentido quando a DIRETIVA já trouxer pacote_recomendado, pacote_de_interesse ou estado_funil RECOMENDACAO_PRONTA.\n- Preserve fatos, diagnóstico e pacote definidos no estado. Responda à pergunta atual dentro desse contexto.\n- Se next_question estiver preenchida, faça exatamente essa pergunta e nada mais, salvo a saudação obrigatória de primeira interação.\n- Se route = opt_out, confirme de forma breve que o atendimento automático será encerrado. Não faça pergunta comercial.\n- Se route = handoff_pendente, informe de forma breve que o pedido de atendimento humano já está aguardando continuidade da equipe. Não refaça diagnóstico nem prometa prazo.\n- Se route = handoff_confirmado, informe que a solicitação foi registrada e aguarda continuidade da equipe. Não refaça diagnóstico.\n- Se route = encerrado, responda apenas de forma cordial e sem reabrir o funil.\n- Se route = handoff, diga que vai registrar o pedido para continuidade da equipe; nunca diga que já transferiu ou que uma pessoa já recebeu.\n- Quando a pergunta atual for sobre pagamento de um pacote mensal, responda diretamente com os oito pontos da seção PAGAMENTO DOS PACOTES MENSAIS. Não reapresente o pacote nem encerre perguntando qual plano faz sentido.\n- Quando já houver pacote recomendado e o cliente fizer pergunta complementar, responda a essa pergunta e mantenha o mesmo pacote. Só altere o pacote se a DIRETIVA IMUTÁVEL trouxer nova decisão do motor.\n- Quando houver recomendação pronta pela primeira vez, explique o pacote e, na mesma resposta lógica, apresente a implantação em bloco separado por ///. Use listas verticais com “- ”.\n- A implantação deve dizer criação e configuração do site institucional, nunca apenas ajuste do site.\n- Não omita etapas obrigatórias da implantação do pacote recomendado.\n- Se a DIRETIVA indicar baixa confiança ou necessidade de confirmação, faça apenas a pergunta de confirmação definida pelo motor.\n- Nunca finalize com “estou à disposição” quando houver uma próxima ação ou pergunta definida no estado.\n"
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "id": "fdd48d34-7c3f-482e-8502-be259e412b28",
+      "name": "LLM - Gerar Resposta Controlada",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.7,
+      "position": [
+        1824,
+        448
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const directive = $('Handoff - Preparar Contexto (sem confirmar envio)').item.json;\nconst fence = String.fromCharCode(96).repeat(3);\nconst newMessagesRaw = $('Novas Mensagens - Status : Processando ').item.json[' message'];\nconst currentMessage = (Array.isArray(newMessagesRaw) ? newMessagesRaw.join(' ') : String(newMessagesRaw || '')).trim();\nconst asksPayment = /\\b(pagamento|mensalidade|primeira mensalidade|cobrança|cobranca|vence|vencimento)\\b/i.test(currentMessage);\n\nconst LOCKED_RESPONSES = {\n  encerrado: 'Por aqui, esse atendimento já foi concluído. Se precisar de mais alguma coisa, é só chamar.',\n  opt_out: 'Entendido. O atendimento automático será encerrado e não farei novas perguntas comerciais.'\n};\n\nif (LOCKED_RESPONSES[directive.route]) {\n  return [{\n    json: {\n      response: LOCKED_RESPONSES[directive.route],\n      validation_ok: true,\n      validation_errors: [],\n      state: directive.state,\n      route: directive.route,\n      handoff: directive.handoff || null\n    }\n  }];\n}\n\nlet response = String($json.text ?? $json.output ?? '')\n  .trim()\n  .replace(/\\*\\*/g, '')\n  .replace(new RegExp('^' + fence + '[^\\\\n]*\\\\n|' + fence + '$', 'g'), '')\n  .replace(/^\\s*[•*]\\s+/gm, '- ')\n  .trim();\n\nconst errors = [];\n\nif (!response) errors.push('resposta_vazia');\n\nif (/\\b(garantimos|garantido|garantia de (vendas?|resultado|leads?|clientes?|faturamento|retorno)|certeza de (vendas?|resultado)|primeiro lugar no google|primeira posição no google|piloto automático|sem participação humana|sem intervenção humana|resultado imediato|resultados imediatos|aprovação (garantida|certa)|ROAS garantido|vendas no piloto)\\b/i.test(response)) {\n  errors.push('promessa_proibida');\n}\n\nif (directive.decision?.pacote_recomendado && !asksPayment &&\n    !response.includes(directive.decision.pacote_recomendado)) {\n  errors.push('pacote_ausente_ou_divergente');\n}\n\nif (directive.route === 'handoff' &&\n    /já (transferi|encaminhei)|foi encaminhado|já está com (a|nossa) equipe/i.test(response)) {\n  errors.push('handoff_ficticio');\n}\n\nconst GREETING_PREFIX = 'Olá, tudo bem? Sou o assistente virtual da Projeto de Portfólio, agência de automação e estratégia digital para pequenas empresas.';\nconst responseForQuestionCheck = response.startsWith(GREETING_PREFIX)\n  ? response.slice(GREETING_PREFIX.length)\n  : response;\n\nconst questions = responseForQuestionCheck.match(/\\?/g) || [];\nif (questions.length > 1) errors.push('mais_de_uma_pergunta');\n\nconst respostaTrimmed = response.trim();\nconst finalSuspeito = /(:|;|,|-|\\/)\\s*$/.test(respostaTrimmed);\nconst ultimaLinha = respostaTrimmed.split('\\n').pop().trim();\nconst respostaCurta = respostaTrimmed.length < 120;\nconst perguntaObrigatoriaAusente = Boolean(directive.next_question) &&\n  !response.includes(directive.next_question);\nconst marcadorDeListaSemConteudo = /^[-•*]\\s*$/.test(ultimaLinha);\n\nif (finalSuspeito && (respostaCurta || perguntaObrigatoriaAusente || marcadorDeListaSemConteudo)) {\n  errors.push('resposta_possivelmente_truncada');\n}\n\nif (directive.next_question) {\n  if (directive.is_first_interaction) {\n    const respostaContemPerguntaCerta = response.includes(directive.next_question);\n    const respostaContemSaudacao = response.startsWith(GREETING_PREFIX);\n    if (!respostaContemPerguntaCerta || !respostaContemSaudacao) {\n      response = GREETING_PREFIX + '\\n\\n' + directive.next_question;\n    }\n    errors.length = 0;\n  } else {\n    response = directive.next_question;\n    errors.length = 0;\n  }\n}\n\nconst emFluxoDoSiteAvulso = directive.route === 'site_avulso' || directive.state?.intencao === 'site_avulso';\n\nconst paymentMarkers = [\n  /R\\$\\s*500/i,\n  /uma única vez|pagamento único/i,\n  /2 a 7 dias úteis/i,\n  /aprova|aprovação/i,\n  /operação mensal começa/i,\n  /implantação não entra|período de implantação não entra/i,\n  /30 dias de operação/i,\n  /primeira mensalidade/i,\n  /não (é|são) teste grátis|não é.*gratuito|ciclo completo/i\n];\n\nif (asksPayment && !directive.next_question && !emFluxoDoSiteAvulso) {\n  const paymentComplete = paymentMarkers.every(re => re.test(response));\n  if (!paymentComplete) errors.push('pagamento_incompleto');\n}\n\nif (errors.includes('pagamento_incompleto')) {\n  const perguntaFechamento = directive.state?.pacote_recomendado\n    ? 'Isso ajuda a confirmar se faz sentido seguir com o ' + directive.state.pacote_recomendado + '?'\n    : 'Isso ajuda a decidir se algum desses pacotes faz sentido para o seu momento agora?';\n  response = [\n    'O pagamento funciona assim:',\n    '',\n    '- a implantação custa R$ 500 e é paga uma única vez no início da contratação;',\n    '- esse valor cobre a preparação, configuração, testes e ativação da estrutura;',\n    '- o prazo estimado da implantação é de 2 a 7 dias úteis após o recebimento das informações, materiais e acessos necessários;',\n    '- depois de tudo configurado, testado e validado, você aprova a ativação;',\n    '- somente após essa aprovação a operação mensal começa oficialmente;',\n    '- o período de implantação não entra na contagem dos primeiros 30 dias de operação;',\n    '- os serviços são executados durante 30 dias e a primeira mensalidade vence somente ao final desse ciclo;',\n    '- cada mensalidade seguinte vence ao final do respectivo ciclo de 30 dias de operação;',\n    '- esses 30 dias não são teste grátis, cortesia ou mês gratuito: são um ciclo completo de serviços já executados.',\n    '',\n    perguntaFechamento\n  ].join('\\n');\n  errors.splice(errors.indexOf('pagamento_incompleto'), 1);\n}\n\nif (errors.length) {\n  if (directive.route === 'handoff') {\n    response = 'Entendi. Vou registrar seu pedido para que a equipe possa dar continuidade ao atendimento.';\n  } else if (directive.decision?.pacote_recomendado) {\n    // Rede de seguranca no momento mais critico: se a IA errou ou omitiu o pacote na\n    // recomendacao final, o cliente nao pode ficar sem resposta nenhuma sobre qual\n    // pacote o motor determinou. Aqui garantimos que o nome certo sempre chegue.\n    response = 'Com base no que você me contou, o pacote mais indicado para o seu momento é o ' +\n      directive.decision.pacote_recomendado + '. Quer que eu detalhe o que está incluído e como funciona a implantação?';\n  } else {\n    response = directive.next_question ||\n      'Não consegui concluir essa orientação com segurança. Pode reformular sua última pergunta?';\n  }\n}\n\nconst handoffEmParalelo = ['PENDENTE','CONFIRMADO'].includes(String(directive.state?.handoff_status || '').toUpperCase());\nconst contextoComercialParaFechamento =\n  Boolean(directive.decision?.pacote_recomendado) ||\n  ['site_avulso','pacotes','comparacao'].includes(directive.route);\n\nif (!errors.length &&\n    !/\\?\\s*$/.test(response) &&\n    !directive.next_question &&\n    !handoffEmParalelo &&\n    contextoComercialParaFechamento) {\n  let fechamento;\n  if (directive.decision?.pacote_recomendado) {\n    fechamento = 'Faz sentido seguirmos com o ' + directive.decision.pacote_recomendado + '?';\n  } else if (directive.route === 'site_avulso') {\n    fechamento = 'Posso te ajudar com mais alguma coisa sobre o site?';\n  } else {\n    fechamento = 'Algum desses pacotes faz mais sentido para o seu momento agora?';\n  }\n  response = response.replace(/\\s*(Se precisar de mais (alguma coisa|informações)[^.?!]*[.!])\\s*$/i, '').trim();\n  response = response + '\\n\\n' + fechamento;\n}\n\nreturn [{\n  json: {\n    response,\n    validation_ok: errors.length === 0,\n    validation_errors: errors,\n    state: directive.state,\n    route: directive.route,\n    handoff: directive.handoff || null\n  }\n}];"
+      },
+      "id": "5b2e9953-013c-4a42-a3c1-ad7a7c774d76",
+      "name": "Validador Comercial e de Segurança",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2160,
+        448
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "CONFIGURE_GOOGLE_SHEET_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "CONFIGURE_SHEET_NAME",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Status": "Respondido",
+            "date": "={{ $now }}",
+            "phone": "={{ $('Webhook').item.json.body.phone }}",
+            "role": "ASSISTENTE",
+            "name ": "Projeto de Portfólio",
+            " message": "={{ $('Validador Comercial e de Segurança').item.json.response }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "date",
+              "displayName": "date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "name ",
+              "displayName": "name ",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "phone",
+              "displayName": "phone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": " message",
+              "displayName": " message",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "role",
+              "displayName": "role",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        2768,
+        160
+      ],
+      "id": "aed90899-98d2-4d07-b88b-ea758462874e",
+      "name": "Tag Respondido"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "1f43c43e-0da5-4f1d-9bb6-0ba7402af1ee",
+              "name": "output",
+              "value": "={{ $('Validador Comercial e de Segurança').item.json.response.split('///') }}",
+              "type": "array"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2896,
+        448
+      ],
+      "id": "9efc85ad-6a45-41a1-8b2f-9a5d38c21863",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "output",
+        "include": "allOtherFields",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        3248,
+        432
+      ],
+      "id": "c96be4cb-8cd7-4b15-8dca-4b0c0a06c7d7",
+      "name": "Split Out"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        2656,
+        656
+      ],
+      "id": "5a1b546d-2de2-40b1-bebe-169b42bc5137",
+      "name": "Loop Over Items"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://example.com/CONFIGURE_WEBHOOK",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Client-Token",
+              "value": "CONFIGURE_SECRET_VALUE"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "phone",
+              "value": "={{ $('Webhook').first().json.body.phone }}"
+            },
+            {
+              "name": "message",
+              "value": "={{ $json.output }}"
+            },
+            {
+              "name": "delayTyping",
+              "value": "6"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        2896,
+        672
+      ],
+      "id": "bba5a097-ccf5-4937-a180-bb533ec7526a",
+      "name": "HTTP Request",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        3056,
+        672
+      ],
+      "id": "4e82fdcc-d110-462b-b212-b822e18cdb60",
+      "name": "Wait1"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "CONFIGURE_GOOGLE_SHEET_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "CONFIGURE_SHEET_NAME",
+          "mode": "name"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "phone",
+              "lookupValue": "={{ $('Webhook').item.json.body.phone }}"
+            },
+            {
+              "lookupColumn": "Status",
+              "lookupValue": "Processando"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        2192,
+        656
+      ],
+      "id": "09151f6c-6aa4-4262-aca3-5ca0d3126c93",
+      "name": "Get row(s) in sheet"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "CONFIGURE_GOOGLE_SHEET_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "CONFIGURE_SHEET_NAME",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "row_number": "={{ $json.row_number }}",
+            "Status": "Respondido"
+          },
+          "matchingColumns": [
+            "row_number"
+          ],
+          "schema": [
+            {
+              "id": "date",
+              "displayName": "date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "name ",
+              "displayName": "name ",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "phone",
+              "displayName": "phone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": " message",
+              "displayName": " message",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        2384,
+        656
+      ],
+      "id": "ad6f968b-e6f0-4fb4-8983-ca557b2d819e",
+      "name": "Update row in sheet"
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-4o-mini",
+        "options": {
+          "maxTokens": 3000,
+          "temperature": 0
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        1168,
+        688
+      ],
+      "id": "ee62eebb-3879-44b1-8fec-cc782d6f882f",
+      "name": "OpenRouter Chat Model"
+    },
+    {
+      "parameters": {
+        "operation": "rowNotExists",
+        "dataTableId": {
+          "__rl": true,
+          "value": "CONFIGURE_DATA_TABLE_ID",
+          "mode": "id"
+        },
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "message_id",
+              "keyValue": "={{ $('Normalizar Evento').item.json.message_id }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        992,
+        -96
+      ],
+      "id": "5500000000000e4a-a1d6-b1220d51a62f",
+      "name": "Verificar mensagem nova"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "value": "CONFIGURE_DATA_TABLE_ID",
+          "mode": "id"
+        },
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "lead_id",
+              "keyValue": "={{ $('Normalizar Evento').item.json.phone }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        512,
+        192
+      ],
+      "id": "ce3950fb-bd3f-4807-a423-87fd9d828e5f",
+      "name": "Carregar estado do lead",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst row = $json || {};\nlet state = {};\n\nif (row.dados_json) {\n  try {\n    state = JSON.parse(row.dados_json);\n  } catch (e) {\n    state = {};\n  }\n}\n\n// Garante identificador do lead mesmo se dados_json estiver vazio ou incompleto\nif (!state.lead_id) {\n  state.lead_id = $('Normalizar Evento').item.json.phone;\n}\n\n// Fallback para colunas persistidas separadamente, caso dados_json nao as tenha\nif (row.estado_funil && !state.estado_funil) state.estado_funil = row.estado_funil;\nif (row.intencao && !state.intencao) state.intencao = row.intencao;\n\n// Estado padrao para lead novo (primeira interacao, sem historico salvo)\nif (!state.estado_funil) state.estado_funil = 'NOVO';\nif (!state.intencao) state.intencao = 'desconhecida';\n\nreturn [{ json: { lead_state: state } }];\n"
+      },
+      "id": "a2ff73fd-c728-43fc-a988-e05ab2e699f4",
+      "name": "Preparar estado do lead",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        816,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "upsert",
+        "dataTableId": {
+          "__rl": true,
+          "value": "CONFIGURE_DATA_TABLE_ID",
+          "mode": "id"
+        },
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "lead_id",
+              "keyValue": "={{ $('Normalizar Evento').item.json.phone }}"
+            }
+          ]
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "lead_id": "={{ $('Normalizar Evento').item.json.phone }}",
+            "estado_funil": "={{ $('Validador Comercial e de Segurança').item.json.state.estado_funil }}",
+            "intencao": "={{ $('Validador Comercial e de Segurança').item.json.state.intencao }}",
+            "dados_json": "={{ JSON.stringify($('Validador Comercial e de Segurança').item.json.state) }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "lead_id",
+              "displayName": "lead_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "estado_funil",
+              "displayName": "estado_funil",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "intencao",
+              "displayName": "intencao",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "dados_json",
+              "displayName": "dados_json",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        2320,
+        160
+      ],
+      "id": "bd53d9aa-1c45-4b0c-9600-508a791ac36f",
+      "name": "Salvar estado do lead"
+    },
+    {
+      "parameters": {
+        "dataTableId": {
+          "__rl": true,
+          "value": "CONFIGURE_DATA_TABLE_ID",
+          "mode": "id"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "message_id": "={{ $('Normalizar Evento').item.json.message_id }}",
+            "lead_id": "={{ $('Normalizar Evento').item.json.phone }}",
+            "direcao": "CLIENTE",
+            "mensagem": "={{ $('Normalizar Evento').item.json.message }}",
+            "estado_anterior": "={{ $('Preparar estado do lead').item.json.lead_state.estado_funil }}",
+            "estado_posterior": "={{ $('Validador Comercial e de Segurança').item.json.state.estado_funil }}",
+            "regra_aplicada": "FUNIL_IA_V1",
+            "pacote_recomendado": "={{ $('Validador Comercial e de Segurança').item.json.state.pacote_recomendado || '' }}",
+            "status_envio": "PENDENTE_ENVIO"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "message_id",
+              "displayName": "message_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "lead_id",
+              "displayName": "lead_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "direcao",
+              "displayName": "direcao",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "mensagem",
+              "displayName": "mensagem",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "estado_anterior",
+              "displayName": "estado_anterior",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "estado_posterior",
+              "displayName": "estado_posterior",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "regra_aplicada",
+              "displayName": "regra_aplicada",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "pacote_recomendado",
+              "displayName": "pacote_recomendado",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "status_envio",
+              "displayName": "status_envio",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "erro",
+              "displayName": "erro",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        2544,
+        160
+      ],
+      "id": "e682792d-fdd2-4ba0-abe4-6b277bc6c86b",
+      "name": "Registrar evento da conversa"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "dataTableId": {
+          "__rl": true,
+          "value": "CONFIGURE_DATA_TABLE_ID",
+          "mode": "id"
+        },
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "message_id",
+              "keyValue": "={{ $('Normalizar Evento').item.json.message_id }}"
+            }
+          ]
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "status_envio": "ENVIADO",
+            "erro": ""
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "message_id",
+              "displayName": "message_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "lead_id",
+              "displayName": "lead_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "direcao",
+              "displayName": "direcao",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "mensagem",
+              "displayName": "mensagem",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "estado_anterior",
+              "displayName": "estado_anterior",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "estado_posterior",
+              "displayName": "estado_posterior",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "regra_aplicada",
+              "displayName": "regra_aplicada",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "pacote_recomendado",
+              "displayName": "pacote_recomendado",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "status_envio",
+              "displayName": "status_envio",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "erro",
+              "displayName": "erro",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        3328,
+        736
+      ],
+      "id": "39d5ef48-d5500000000000b-c1c44321dfe6",
+      "name": "Marcar evento como enviado"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://example.com/CONFIGURE_WEBHOOK",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Client-Token",
+              "value": "CONFIGURE_SECRET_VALUE"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "phone",
+              "value": "5500000000000"
+            },
+            {
+              "name": "message",
+              "value": "={{ $json.handoff && $json.handoff.context ? '🔔 HANDOFF PENDENTE\\n\\nUm lead precisa de atendimento humano.\\n\\nLead: ' + ($json.handoff.context.nome || 'Não informado') + '\\nEmpresa: ' + ($json.handoff.context.empresa || 'Não informado') + '\\nSegmento: ' + ($json.handoff.context.segmento || 'Não informado') + '\\nIntenção: ' + ($json.handoff.context.intencao || 'Não informado') + '\\nÚltima mensagem: ' + ($json.handoff.context.ultima_mensagem || '') + '\\nTelefone do lead: ' + ($json.handoff.context.lead_id || '') : 'HANDOFF sem contexto disponível.' }}"
+            },
+            {
+              "name": "delayTyping",
+              "value": "0"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "633ee811-fac6-4eb0-8a95-992eae58b07f",
+      "name": "Notificar Handoff WhatsApp",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1824,
+        656
+      ],
+      "retryOnFail": true
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "handoff-check",
+                    "leftValue": "={{ $json.notification_route || $json.route }}",
+                    "operator": {
+                      "operation": "equals",
+                      "type": "string"
+                    },
+                    "rightValue": "handoff"
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "none"
+        }
+      },
+      "id": "d6fd478b-0370-48c6-b0f0-90a628d3c5e8",
+      "name": "Rota Handoff?",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        1600,
+        656
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Filter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter": {
+      "main": [
+        [
+          {
+            "node": "Normalizar Evento",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalizar Evento": {
+      "main": [
+        [
+          {
+            "node": "Verificar mensagem nova",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tag Recebido": {
+      "main": [
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "Get Histórico da Conversa ",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Histórico da Conversa ": {
+      "main": [
+        [
+          {
+            "node": "Update Status Processando",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Status Processando": {
+      "main": [
+        [
+          {
+            "node": "Extrai Status Processando",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extrai Status Processando": {
+      "main": [
+        [
+          {
+            "node": "Novas Mensagens - Status : Processando ",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Novas Mensagens - Status : Processando ": {
+      "main": [
+        [
+          {
+            "node": "Extrai Histórico Respondido",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extrai Histórico Respondido": {
+      "main": [
+        [
+          {
+            "node": "Formata Histórico",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Formata Histórico": {
+      "main": [
+        [
+          {
+            "node": "Carregar estado do lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LLM - Classificar e Extrair JSON": {
+      "main": [
+        [
+          {
+            "node": "Validar JSON e Mesclar Estado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validar JSON e Mesclar Estado": {
+      "main": [
+        [
+          {
+            "node": "Motor Determinístico FUNIL_IA_V1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Motor Determinístico FUNIL_IA_V1": {
+      "main": [
+        [
+          {
+            "node": "Handoff - Preparar Contexto (sem confirmar envio)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Handoff - Preparar Contexto (sem confirmar envio)": {
+      "main": [
+        [
+          {
+            "node": "Rota Handoff?",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "LLM - Gerar Resposta Controlada",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LLM - Gerar Resposta Controlada": {
+      "main": [
+        [
+          {
+            "node": "Validador Comercial e de Segurança",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validador Comercial e de Segurança": {
+      "main": [
+        [
+          {
+            "node": "Salvar estado do lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tag Respondido": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Split Out",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [
+          {
+            "node": "Marcar evento como enviado",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Wait1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait1": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s) in sheet": {
+      "main": [
+        [
+          {
+            "node": "Update row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "LLM - Classificar e Extrair JSON",
+            "type": "ai_languageModel",
+            "index": 0
+          },
+          {
+            "node": "LLM - Gerar Resposta Controlada",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Carregar estado do lead": {
+      "main": [
+        [
+          {
+            "node": "Preparar estado do lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verificar mensagem nova": {
+      "main": [
+        [
+          {
+            "node": "Tag Recebido",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar estado do lead": {
+      "main": [
+        [
+          {
+            "node": "LLM - Classificar e Extrair JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Salvar estado do lead": {
+      "main": [
+        [
+          {
+            "node": "Registrar evento da conversa",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Registrar evento da conversa": {
+      "main": [
+        [
+          {
+            "node": "Tag Respondido",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Marcar evento como enviado": {
+      "main": [
+        [
+          {
+            "node": "Get row(s) in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Rota Handoff?": {
+      "main": [
+        [
+          {
+            "node": "Notificar Handoff WhatsApp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": true
+  },
+  "nodeGroups": [],
+  "tags": []
+}
