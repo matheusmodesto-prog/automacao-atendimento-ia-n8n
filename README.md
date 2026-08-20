@@ -6,6 +6,10 @@ Projeto prático implementado e personalizado por **Matheus Modesto**, com melho
 
 A automação recebe mensagens por webhook, organiza o histórico da conversa, identifica a intenção do lead com apoio de um modelo de linguagem e aplica regras determinísticas antes de gerar a resposta. Quando necessário, encaminha o contato para atendimento humano com o contexto já estruturado.
 
+## Visão do fluxo
+
+![Workflow de atendimento e qualificação de leads no n8n](docs/workflow.png)
+
 ## Principais recursos
 
 - Recebimento e normalização de eventos via webhook;
